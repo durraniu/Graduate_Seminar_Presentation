@@ -1,0 +1,148 @@
+---
+title: "Graduate Seminar"
+output:
+  word_document: default
+  html_notebook:
+    toc: yes
+  pdf_document: default
+  html_document:
+    toc: yes
+always_allow_html: yes
+---
+
+# Excel Import Demo
+
+## Deaths Data set
+
+![](excel_table.jpg)
+
+* Environment Tab --> Import Dataset
+
+## First attempt
+
+```{r excel_import1}
+library(readxl)
+deaths <- read_excel("~/Graduate_Seminar_Presentation/deaths.xlsx")
+
+deaths
+```
+
+## Second (& successful) attempt
+
+```{r excel_import}
+library(readxl)
+deaths <- read_excel("~/Graduate_Seminar_Presentation/deaths.xlsx",  
+                     range = cell_rows(5:15))
+
+deaths
+```
+
+# Data Munging Example
+
+## Pipe Operator and mutate
+
+Create a new column: `birthplace`
+
+```{r data_munging}
+library(dplyr)
+deaths %>% 
+  mutate(birthplace = c("UK", "US", "US", "US", "US", 
+                        "UK", "US", "US", "Hungary",
+                        "UK"))
+```
+
+# Data Exploration 
+
+## Gapminder Data  
+
+```{r}
+library(gapminder)
+
+gapminder
+```
+
+## Summary Statistics
+
+### All countries
+```{r}
+gapminder %>% 
+  group_by(country) %>%
+  select(lifeExp, pop, gdpPercap) %>% 
+  summarize_all(funs(min, max, mean, sd, median))
+```
+#### Plot (Interactive and non-interactive)
+```{r}
+library(ggplot2)
+gapminder %>% 
+  filter(country %in% c("Canada", "United States", "India")) %>% 
+  ggplot(data = .) +
+  geom_point(aes(x = year, y = lifeExp, size = pop, color = country)) 
+
+
+# gapminder %>% 
+#   filter(country %in% c("Canada", "United States", "India")) %>% 
+#   ggplot(data = .) +
+#   geom_point(aes(x = year, y = lifeExp, size = pop)) +
+#   facet_wrap(~country)
+  
+```
+
+```{r}
+library(plotly)
+
+  ggplot(data = gapminder %>% 
+  filter(continent=="Oceania")) + #Europe Africa
+  geom_line(aes(x = year, y = gdpPercap, color = country))  
+  ggplotly()
+```
+
+# Modelling
+
+## Gapminder data (Nested)
+```{r}
+library(tidyr)
+library(purrr)
+by_country <- gapminder %>% 
+  group_by(country, continent) %>% 
+  nest()
+by_country
+```
+
+## Fitting Models: 
+```{r}
+#Model
+country_model <- function(df) {
+  lm(lifeExp ~ year, data = df)
+}
+
+# Fitting model
+by_country <- by_country %>% 
+  mutate(model = map(data, country_model))
+by_country
+```
+
+# Getting Goodness of fit and Significance
+```{r}
+library(broom)
+by_country %>% 
+  mutate(glance = map(model, glance)) %>% 
+  unnest(glance, .drop = TRUE)
+```
+
+# Communication
+
+## Gapminder animation
+```{r}
+library(gganimate)
+
+p <- ggplot(gapminder, aes(gdpPercap, lifeExp, size = pop, color = continent, frame = year)) +
+  geom_point() +
+  scale_x_log10()
+gganimate(p)
+```
+
+
+```{r}
+sessionInfo()
+```
+
